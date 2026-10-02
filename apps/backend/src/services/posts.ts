@@ -229,6 +229,8 @@ export async function getPost(id: string, viewerId: string | null = null) {
 // untitled or remote post's URL is made of on its own. The leading dash is
 // optional so both forms match.
 const TRAILING_SHORT_ID = /(?:^|-)([0-9a-f]{8,})$/i;
+// Checked first: read as a short id, a full UUID is only its last dash group.
+const FULL_UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 
 /**
  * Resolve `/@username/<slug>` to a post, in the order a reader's link can mean
@@ -256,15 +258,15 @@ export async function getPostBySlug(username: string, slug: string, viewerId: st
     if (row) return assertVisible(row, viewerId);
   }
 
-  const shortId = slug.match(TRAILING_SHORT_ID)?.[1];
-  if (shortId) return getPost(shortId.toLowerCase(), viewerId);
+  const id = slug.match(FULL_UUID)?.[0] ?? slug.match(TRAILING_SHORT_ID)?.[1];
+  if (id) return getPost(id.toLowerCase(), viewerId);
 
   throw notFound("Post not found.");
 }
 
 // Who may read a single post. Feeds filter in SQL (visibleToViewer); a direct
 // permalink is gated here, whichever way the reader addressed it.
-async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
+export async function assertVisible(row: postsRepo.PostWithAuthor, viewerId: string | null) {
   // Anything not yet published — a draft, or a post waiting for its scheduled
   // moment — is private to its author, and anyone else gets a plain not-found.
   // Written as "not published" rather than "is a draft" so that a state added

@@ -7,7 +7,7 @@ import { badRequest, notFound } from "@/lib/http.ts";
 import { renderMarkdown } from "@/lib/markdown.ts";
 import { decodeCursor } from "@/lib/pagination.ts";
 import { jsonBody } from "@/lib/validate.ts";
-import { requireUser } from "@/routes/middleware.ts";
+import { readUpload, requireUser } from "@/routes/middleware.ts";
 import { profileLinkView, publicUser } from "@/routes/serializers.ts";
 import type { AppEnv } from "@/routes/types.ts";
 import { enrichPosts } from "@/services/engagement.ts";
@@ -17,7 +17,7 @@ import * as postsService from "@/services/posts.ts";
 import * as recommendationsService from "@/services/recommendations.ts";
 import * as relationsService from "@/services/relations.ts";
 import * as usersService from "@/services/users.ts";
-import { MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
+import { MAX_AVATAR_BYTES, MAX_CUSTOM_SECTION_LEN } from "@/services/users.ts";
 
 export const userRoutes = new Hono<AppEnv>();
 
@@ -91,7 +91,7 @@ userRoutes.post("/me/follow-requests/:id/reject", async (c) => {
 userRoutes.post("/me/avatar", async (c) => {
   const viewer = requireUser(c);
   const contentType = (c.req.header("content-type") ?? "").split(";")[0].trim();
-  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  const bytes = await readUpload(c, MAX_AVATAR_BYTES, "Image too large (max 2 MB).");
   const user = await usersService.setAvatar(viewer.id, bytes, contentType);
   return c.json({ user: publicUser(user) });
 });
@@ -169,7 +169,8 @@ userRoutes.get("/:username/following", async (c) => {
 userRoutes.get("/:username/posts", async (c) => {
   const viewer = c.get("user");
   const user = await usersRepo.findByUsername(c.req.param("username"));
-  if (!user) throw notFound("User not found.");
+  // A deleted account is not found here, as on every other profile surface.
+  if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await postsService.listByAuthor(user.id, cursor, viewer?.id ?? null);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });
@@ -181,7 +182,7 @@ userRoutes.get("/:username/posts", async (c) => {
 userRoutes.get("/:username/recommendations", async (c) => {
   const viewer = c.get("user");
   const user = await usersRepo.findByUsername(c.req.param("username"));
-  if (!user) throw notFound("User not found.");
+  if (!user || user.deletedAt) throw notFound("User not found.");
   const cursor = decodeCursor(c.req.query("cursor"));
   const { items, nextCursor } = await recommendationsService.listByUser(user.id, viewer?.id ?? null, cursor);
   return c.json({ items: await enrichPosts(items, viewer?.id ?? null), nextCursor });

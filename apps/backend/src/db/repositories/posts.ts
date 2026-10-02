@@ -96,7 +96,9 @@ export async function upsertRemotePost(data: {
 // canonical post URLs, e.g. `9e962281`). The prefix path matches on the text
 // form of the id; 8 hex chars is 32 bits, so collisions are negligible for a
 // single instance and we deterministically return the oldest match.
-export function findById(id: string) {
+export function findById(id: string): Promise<PostWithAuthor | null> {
+  // Hex and dashes only, so `%` / `_` can't act as LIKE wildcards in the prefix match.
+  if (!/^[0-9a-f-]{8,}$/i.test(id)) return Promise.resolve(null);
   const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   const match = isFullUuid ? eq(posts.id, id) : sql`${posts.id}::text like ${`${id.toLowerCase()}%`}`;
   return selectPosts()
@@ -412,7 +414,7 @@ export function listSitemapProfiles() {
   return db
     .select({
       username: users.username,
-      lastPostAt: sql<Date>`max(${posts.createdAt})`.as("last_post_at"),
+      lastPostAt: sql<Date>`max(${posts.createdAt})`.mapWith(posts.createdAt).as("last_post_at"),
     })
     .from(users)
     .innerJoin(posts, and(eq(posts.authorId, users.id), eq(posts.status, "published"), eq(posts.remote, false)))
@@ -616,7 +618,7 @@ export function listTrending(viewerId: string | null, limit = 5, sinceDays = 30)
       * 1
       + (select count(*) from comments
         where comments.post_id = ${posts.id}
-          and (${posts.authorId} is null or comments.author_id != ${posts.authorId}))
+          and comments.author_id is distinct from ${posts.authorId})
       * 2
     ) / power(extract(epoch from (now() - ${posts.createdAt})) / 3600 + 2, 1.5)
   )`;

@@ -6,6 +6,8 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The request field the error is about, when the backend names one. */
+    public field?: string,
   ) {
     super(message);
   }
@@ -18,9 +20,16 @@ async function request<T>(path: string, init: RequestInit, fetchFn: FetchFn): Pr
   if (!headers.has("content-type")) headers.set("content-type", "application/json");
   const res = await fetchFn(`/api${path}`, { ...init, headers });
   const text = await res.text();
-  const body = text ? JSON.parse(text) : null;
+  let body = null;
+  try {
+    body = text ? JSON.parse(text) : null;
+  } catch {
+    // A body that isn't ours (Caddy's HTML 502 while the backend restarts, a
+    // plain-text 413) still fails as an ApiError carrying its status.
+    if (res.ok) throw new ApiError(res.status, "Unexpected response from the server.");
+  }
   if (!res.ok) {
-    throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`);
+    throw new ApiError(res.status, body?.error ?? `Request failed (${res.status})`, body?.field || undefined);
   }
   // oxlint-disable-next-line no-unsafe-type-assertion
   return body as T;

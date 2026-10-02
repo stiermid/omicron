@@ -483,11 +483,8 @@ test("edit is seeded from the detail and saves only what changed", async () => {
   expect(save).toBeEnabled();
   await fireEvent.click(save);
   await screen.findByText("Saved.");
-  // Unchanged links ride along too (see the observation in BUGS.md); tags, bio and emails don't.
-  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
-    displayName: "Robert",
-    links: [{ platform: "github", url: "https://github.com/bob", label: "" }],
-  });
+  // Only the changed field: the untouched tags and links aren't rewritten.
+  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ displayName: "Robert" });
   expect(screen.getByText("Robert")).toBeInTheDocument();
   expect(screen.queryByText("Edit @bob")).toBe(null);
 });
@@ -535,11 +532,7 @@ test("a refused edit keeps the dialog open with the reason", async () => {
   expect(screen.getByText("Edit @bob")).toBeInTheDocument();
 });
 
-// BUG: openEdit only fetches the detail when no fetch for that row is in
-// flight. Picking "Edit profile…" while the row's expand is still loading
-// seeds the dialog from the bare row, so tags and links start empty, and
-// adding one tag saves a tag list that drops every existing tag.
-test.fails("BUG: editing while the row's detail is loading keeps its existing tags", async () => {
+test("editing while the row's detail is loading keeps its existing tags", async () => {
   const slow = deferred();
   const { calls } = setup({
     "GET /api/admin/users/u-bob": () => slow.promise,
@@ -557,6 +550,24 @@ test.fails("BUG: editing while the row's detail is loading keeps its existing ta
   await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
   await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
   expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ tags: ["deno", "svelte"] });
+});
+
+// Without the detail the tags and links are unknown; saving [] would wipe them.
+test("when the detail can't load, edit hides tags and links and never sends them", async () => {
+  const { calls } = setup({
+    "GET /api/admin/users/u-bob": apiError(500, "Detail down"),
+    "PATCH /api/admin/users/u-bob": (req) =>
+      req.json().then((b: Partial<AdminUser>) => Response.json({ user: { ...bob, ...b } })),
+  });
+  await screen.findByText("2 accounts total");
+  await openMenu("bob", "Edit profile…");
+  await screen.findByText("Detail down");
+  expect(screen.getByText(/Tags and links couldn't be loaded/)).toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/^Add (tags|another tag)/)).toBe(null);
+  await fireEvent.input(screen.getByLabelText("Display name"), { target: { value: "Robert" } });
+  await fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+  await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+  expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ displayName: "Robert" });
 });
 
 test("recently deleted accounts show who deleted them and the days left", async () => {
@@ -597,6 +608,17 @@ test("erasing confirms; a failure is shown under the deleted list", async () => 
   expect(screen.getByText("Gone")).toBeInTheDocument();
 });
 
+// Erasing skips the restore window, so the server allows it to admins only.
+test("a moderator can restore a deleted account but is not offered Erase", async () => {
+  setup(
+    { "GET /api/admin/users/deleted": { users: [deletedUser()], nextCursor: null, total: 1, filteredTotal: 1 } },
+    { isViewerAdmin: false },
+  );
+  await screen.findByText("Gone");
+  expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Erase" })).toBeNull();
+});
+
 test("the deleted list searches and pages on its own", async () => {
   const { calls } = setup({
     "GET /api/admin/users/deleted?cursor=d1": {
@@ -616,9 +638,7 @@ test("the deleted list searches and pages on its own", async () => {
   await waitFor(() => expect(calls.at(-1)?.path).toBe("/api/admin/users/deleted"));
 });
 
-// BUG: restore and erase decrement deletedTotal but not deletedFilteredTotal,
-// so while searching the header reads "1 of 0 accounts · showing 0".
-test.fails("BUG: erasing a searched-for account keeps the search count honest", async () => {
+test("erasing a searched-for account keeps the search count honest", async () => {
   setup({
     "GET /api/admin/users/deleted": { users: [deletedUser()], nextCursor: null, total: 1, filteredTotal: 1 },
     "DELETE /api/admin/users/deleted/d-gone": { ok: true },

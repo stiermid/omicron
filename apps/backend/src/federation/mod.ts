@@ -41,7 +41,14 @@ import type { Post } from "@/db/schema.ts";
 import { buildPerson } from "@/federation/actor.ts";
 import { articleLanguage, buildArticle, isPubliclyAddressed } from "@/federation/article.ts";
 import { setupNodeInfo } from "@/federation/nodeinfo.ts";
-import { buildNote, ingestNote, ingestNoteDelete, ingestNoteUpdate, noteContext } from "@/federation/note.ts";
+import {
+  buildNote,
+  findPostByApUri,
+  ingestNote,
+  ingestNoteDelete,
+  ingestNoteUpdate,
+  noteContext,
+} from "@/federation/note.ts";
 import { cacheActor } from "@/federation/remote.ts";
 import { sameOrigin } from "@/lib/domain.ts";
 import { textToNoteHtml } from "@/lib/html.ts";
@@ -169,6 +176,8 @@ function setupFollowers(f: Federation<ContextData>) {
   f.setFollowersDispatcher("/users/{identifier}/followers", async (ctx, identifier) => {
     const user = await usersRepo.findByUsername(identifier);
     if (!user || user.deletedAt) return null;
+    // Same rule as the web API (follows.followersOf): a private account's list is hidden.
+    if (user.isPrivate) return { items: [] };
     const [locals, remotes] = await Promise.all([
       followsRepo.localFollowerUsernames(user.id),
       followsRepo.remoteFollowerActors(user.id),
@@ -332,7 +341,14 @@ function setupInbox(f: Federation<ContextData>) {
         // Follow activity id so a later approve can Accept it) and notify the
         // owner. Do NOT auto-Accept — the owner approves/rejects (see
         // services/followRequests.ts), which sends the Accept/Reject.
-        await followsRepo.createRemoteFollower(followee.id, follower.id.href, false, follow.id?.href ?? null);
+        const created = await followsRepo.createRemoteFollower(
+          followee.id,
+          follower.id.href,
+          false,
+          follow.id?.href ?? null,
+        );
+        // A resent Follow is the same request; don't show it to the owner twice.
+        if (!created) return;
         await notifications.notify({
           recipientId: followee.id,
           type: "follow_request",
@@ -341,13 +357,15 @@ function setupInbox(f: Federation<ContextData>) {
         return;
       }
 
-      // Public account: accept instantly and notify the new follower.
-      await followsRepo.createRemoteFollower(followee.id, follower.id.href);
-      await notifications.notify({
-        recipientId: followee.id,
-        type: "follow",
-        remoteActorId: cachedActor.id,
-      });
+      // Public account: accept instantly and notify the new follower. A resent
+      // Follow (its Accept was lost) is accepted again but not re-notified.
+      if (await followsRepo.createRemoteFollower(followee.id, follower.id.href)) {
+        await notifications.notify({
+          recipientId: followee.id,
+          type: "follow",
+          remoteActorId: cachedActor.id,
+        });
+      }
       await ctx.sendActivity(
         { identifier: parsed.identifier },
         follower,
@@ -373,7 +391,7 @@ function setupInbox(f: Federation<ContextData>) {
         // post's URI (not the Announce's own id), which is what we keyed the
         // recommendation on.
         if (!object.objectId || !undo.actorId) return;
-        const post = await postsRepo.findByApId(object.objectId.href);
+        const post = (await findPostByApUri(object.objectId.href))?.post;
         if (!post) return;
         const actor = await remoteActorsRepo.findByApId(undo.actorId.href);
         if (!actor) return;
@@ -449,7 +467,7 @@ function setupInbox(f: Federation<ContextData>) {
       if (!isActor(recommender) || !recommender.id) return;
       const actor = await cacheActor(recommender);
 
-      let post = await postsRepo.findByApId(announce.objectId.href);
+      let post = (await findPostByApUri(announce.objectId.href))?.post;
       if (!post) {
         const object = await announce.getObject(ctx);
         if (!(object instanceof Article)) return;

@@ -51,6 +51,8 @@ export async function ensureReadLater(userId: string): Promise<ReadingList> {
 // list URLs, e.g. `66635376`). 8 hex chars is 32 bits, so collisions are
 // negligible for a single instance; we deterministically return the oldest match.
 export function findById(id: string): Promise<ReadingList | undefined> {
+  // Hex and dashes only, so `%` / `_` can't act as LIKE wildcards in the prefix match.
+  if (!/^[0-9a-f-]{8,}$/i.test(id)) return Promise.resolve(undefined);
   const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   const match = isFullUuid ? eq(readingLists.id, id) : sql`${readingLists.id}::text like ${`${id.toLowerCase()}%`}`;
   return db.query.readingLists.findFirst({ where: match, orderBy: readingLists.createdAt });
@@ -90,7 +92,7 @@ export function listSitemapLists(): Promise<{ id: string; title: string; lastIte
     .select({
       id: readingLists.id,
       title: readingLists.title,
-      lastItemAt: sql<Date>`max(${readingListItems.createdAt})`,
+      lastItemAt: sql<Date>`max(${readingListItems.createdAt})`.mapWith(readingListItems.createdAt),
     })
     .from(readingLists)
     .innerJoin(readingListItems, eq(readingListItems.listId, readingLists.id))
