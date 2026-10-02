@@ -80,39 +80,51 @@ Everything lives at **[docs.omicron.blog](https://docs.omicron.blog)**:
 
 ```bash
 # Postgres must be running and DATABASE_URL set.
-cd apps/backend && deno task dev              # http://localhost:8000
+cd apps/backend && pnpm install && pnpm dev   # http://localhost:8000
 cd apps/frontend && pnpm install && pnpm dev  # http://localhost:5173
 ```
 
-Run the backend at least once before the frontend's `pnpm check`, even when
-working only on the frontend. The frontend typecheck reads the backend's
-serializers to verify its own API types still match them
-(`apps/frontend/src/lib/api/contract.ts`), so it needs the backend's npm
-dependencies on disk. `deno task dev` installs them as a side effect; `deno
-install` in `apps/backend` does it on its own. Skip this and `pnpm check`
-reports `Cannot find module 'drizzle-orm'` against backend files rather than
-anything you changed.
+Development uses pnpm throughout; Deno only runs the backend underneath
+(`pnpm dev` starts it) and in the production container.
+
+Install the backend's dependencies (`pnpm install` in `apps/backend`) before
+the frontend's `pnpm check`, even when working only on the frontend. The
+frontend typecheck reads the backend's serializers to verify its own API types
+still match them (`apps/frontend/src/lib/api/contract.ts`). Skip this and
+`pnpm check` reports `Cannot find module 'drizzle-orm'` against backend files
+rather than anything you changed.
 
 ### Tests
 
 ```bash
 cd apps/backend
-deno task test              # unit tests — no database needed
-deno task test:integration  # visibility rules — needs a throwaway database
+pnpm test              # unit and integration tests (needs Postgres, see below)
+pnpm test:unit         # unit tests only, no database needed
+pnpm test:integration  # visibility rules only
+pnpm check             # typecheck, format, lint and unit tests (run `pnpm fmt` first)
 ```
 
 The integration suite runs the committed migrations and asserts on who can see
 what: drafts, private accounts, suspended authors, across feeds, tag pages,
-reading lists and the sitemap. It reads `DATABASE_URL` and **truncates every
-table it touches**, so point it at a scratch database, never a real one:
+reading lists and the sitemap. Its files run one at a time and **truncate every
+table they touch**, so point it at a scratch database, never a real one.
+
+Any Postgres works, including one installed natively. By default the tests use
+`postgres://omicron:omicron@localhost:5432/omicron_test` (from
+`apps/backend/tests/test.env`), so create that role and database once:
+
+```sql
+CREATE ROLE omicron LOGIN PASSWORD 'omicron';
+CREATE DATABASE omicron_test OWNER omicron;
+```
+
+Set `DATABASE_URL` to use a different one. Without a local Postgres, a
+throwaway container works too:
 
 ```bash
-docker run -d --name omicron-test-db -p 55432:5432 \
-  -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron \
-  -e POSTGRES_DB=omicron_test postgres:16-alpine
+docker run -d --name omicron-test-db -p 55432:5432   -e POSTGRES_USER=omicron -e POSTGRES_PASSWORD=omicron   -e POSTGRES_DB=omicron_test postgres:16-alpine
 
-DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test \
-SESSION_SECRET=test-secret deno task test:integration
+DATABASE_URL=postgres://omicron:omicron@localhost:55432/omicron_test pnpm test:integration
 ```
 
 CI runs both on every push and PR against its own Postgres service.
