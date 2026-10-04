@@ -8,3 +8,4 @@ Closes #
 
 - [ ] Backend checks / tests pass
 - [ ] Frontend builds and the affected UI was exercised
+- [ ] Android build, lint, and tests pass when `apps/mobile` changes

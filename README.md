@@ -37,7 +37,7 @@ instance in one command and own your words.
 - **Real writing tools** — a Tiptap editor with full Markdown support.
 
 **Stack** — Backend: Deno · Hono · Fedify · Drizzle · PostgreSQL · Frontend:
-SvelteKit · bits-ui · Tiptap · TailwindCSS.
+SvelteKit · bits-ui · Tiptap · TailwindCSS · Mobile: Kotlin Multiplatform · Compose.
 
 ---
 

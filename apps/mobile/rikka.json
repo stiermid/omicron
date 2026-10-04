@@ -1,0 +1,4 @@
+{
+    "packageName": "org.omicron.mobile.core.designsystem.rikkaui",
+    "componentsDir": "composeApp/src/commonMain/kotlin/org/omicron/mobile/core/designsystem/rikkaui"
+}
