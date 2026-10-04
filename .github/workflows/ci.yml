@@ -159,8 +159,14 @@ jobs:
           java-version: "17"
       - name: Install Android SDK Platform 36
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          for candidate in /usr/local/lib/android/sdk/cmdline-tools/*/bin/sdkmanager; do
+            if [ -x "$candidate" ]; then
+              sdkmanager="$candidate"
+            fi
+          done
+          test -n "$sdkmanager"
+          yes | "$sdkmanager" --licenses
+          "$sdkmanager" "platforms;android-36" "build-tools;36.0.0"
       - uses: gradle/actions/setup-gradle@v4
       - name: Build, lint, and test
         run: ./gradlew --no-daemon :composeApp:assembleDebug :composeApp:lintDebug :composeApp:testDebugUnitTest
