@@ -4,12 +4,12 @@ import bcrypt from "bcryptjs";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import { emailOTP, haveIBeenPwned, username } from "better-auth/plugins";
+import { emailOTP, haveIBeenPwned, jwt, username } from "better-auth/plugins";
 import { config } from "@/config.ts";
 import { db } from "@/db/client.ts";
 import * as passkeysRepo from "@/db/repositories/passkeys.ts";
 import * as usersRepo from "@/db/repositories/users.ts";
-import { accounts, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
+import { accounts, jwks, type Passkey, passkeys, sessions, users, verifications } from "@/db/schema.ts";
 import { queue } from "@/queue/queue.ts";
 import {
   notifyEmailChangeCode,
@@ -20,6 +20,7 @@ import {
 } from "@/services/accountNotices.ts";
 import { createUndoLink } from "@/services/emailChange.ts";
 import { getAppName, getOrigin } from "@/services/instanceSetup.ts";
+import { completeRollover } from "@/services/jwtKeys.ts";
 
 const BCRYPT_COST = 12;
 const SESSION_TTL_S = 60 * 60 * 24 * 30;
@@ -30,6 +31,7 @@ const PASSKEY_NAME_MAX = 60;
 // outlive a revoked session by up to 5 minutes; they must check the database.
 const AUTHORITATIVE_SESSION_PATHS = new Set([
   "/list-sessions",
+  "/token",
   "/passkey/generate-register-options",
   "/passkey/verify-registration",
   "/passkey/list-user-passkeys",
@@ -59,9 +61,15 @@ export const auth = betterAuth({
   secret: config.SESSION_SECRET,
   database: drizzleAdapter(db, {
     provider: "pg",
-    schema: { user: users, session: sessions, account: accounts, verification: verifications, passkey: passkeys },
+    schema: { user: users, session: sessions, account: accounts, verification: verifications, passkey: passkeys, jwks },
   }),
   plugins: [
+    jwt({
+      jwt: {
+        definePayload: () => ({}),
+        expirationTime: "15m",
+      },
+    }),
     username({
       minUsernameLength: 3,
       maxUsernameLength: 30,
@@ -112,6 +120,11 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if ((ctx.path === "/token" || ctx.path === "/jwks") && !(await completeRollover())) {
+        throw new APIError("INTERNAL_SERVER_ERROR", {
+          message: "JWT signing keys will be available after the instance restarts.",
+        });
+      }
       if (AUTHORITATIVE_SESSION_PATHS.has(ctx.path) && !(await getSessionFromCtx(ctx, { disableCookieCache: true }))) {
         throw new APIError("UNAUTHORIZED", { message: "Unauthorized" });
       }

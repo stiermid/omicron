@@ -36,7 +36,7 @@ The Android-first Kotlin Multiplatform foundation and instance connection are co
 
 - Introduce type-safe navigation and dependency wiring only where the auth flow uses them.
 - Implement Better Auth email and username sign-in, registration, session restoration, verification-required state, sign-out, and account switching from confirmed `/api/auth/*` behavior.
-- Store cookies securely per instance origin and never send them to another origin.
+- Store Better Auth cookies securely per instance origin for session restoration and token refresh. Keep the 15-minute JWT in memory and authenticate normal API calls with `Authorization: Bearer` only to that origin.
 - Add UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
 
 ## R2: Guest Reader
@@ -110,6 +110,7 @@ The Android-first Kotlin Multiplatform foundation and instance connection are co
 | --- | --- |
 | Instance metadata | `GET /api/instance` |
 | Session | Better Auth under `/api/auth/*`; `GET /api/auth/get-session`; `POST /api/auth/sign-out` |
+| JWT API authentication | `GET /api/auth/token`; public `GET /api/auth/jwks`; normal `/api/*` routes accept the signed JWT as `Authorization: Bearer` |
 | Global and Local posts | `GET /api/posts`, with `scope=local`, opaque `cursor`, and language filters |
 | Following feed | `GET /api/feed?cursor=...` |
 | Post and comments | `GET /api/posts/:id`, `GET /api/posts/by/:username/:slug`, `GET /api/posts/:id/comments?cursor=...` |
@@ -123,7 +124,9 @@ All regular pages use opaque cursor/keyset pagination and return `{items,nextCur
 
 ## API Gaps And Constraints
 
-- No confirmed bearer, JWT, OAuth, or device-auth flow exists. Native authentication must retain Better Auth session cookies securely per instance.
+- JWTs expire after 15 minutes. Revoked sessions cannot mint a new token, but a previously issued JWT remains valid until expiry.
+- JWT issuer and audience use Better Auth's configured public `APP_DOMAIN`; instance operators must keep it aligned with the deployed origin.
+- No confirmed OAuth or device-auth flow exists.
 - Email verification links target the web verification route. No Android App Link or deep-link handoff is confirmed.
 - No push, WebSocket, SSE, or device-token API exists. Notifications are polling only.
 - No public versioned schema or OpenAPI contract exists; `contract.ts` is compile-time frontend checking only.
