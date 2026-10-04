@@ -10,10 +10,11 @@
 </p>
 
 <p align="center">
-  <img src="https://shieldcn.dev/badge/license-AGPL--3.0-blue.svg?logo=opensourceinitiative&size=xs" alt="License: AGPL-3.0" />
-  <img src="https://shieldcn.dev/badge/protocol-ActivityPub-6364FF.svg?logo=activitypub&size=xs" alt="ActivityPub" />
-  <img src="https://shieldcn.dev/badge/backend-Deno-000000.svg?logo=deno&logoColor=white&size=xs" alt="Deno" />
-  <img src="https://shieldcn.dev/badge/frontend-SvelteKit-FF3E00.svg?logo=svelte&logoColor=white&size=xs" alt="SvelteKit" />
+  <a href="https://github.com/the-jk-labs/omicron/actions/workflows/ci.yml"><img src="https://github.com/the-jk-labs/omicron/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square" alt="License: AGPL-3.0" /></a>
+  <a href="https://docs.omicron.blog/federation/overview/"><img src="https://img.shields.io/badge/protocol-ActivityPub-6364FF?style=flat-square" alt="ActivityPub" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/commits/main"><img src="https://img.shields.io/github/last-commit/the-jk-labs/omicron?style=flat-square" alt="Last commit" /></a>
+  <a href="https://github.com/the-jk-labs/omicron/stargazers"><img src="https://img.shields.io/github/stars/the-jk-labs/omicron?style=flat-square" alt="GitHub stars" /></a>
 </p>
 
 <p align="center">
