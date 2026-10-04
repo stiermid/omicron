@@ -1,44 +1,113 @@
-# Android Roadmap
+# Product Roadmap
 
-## Status
+## Planning Rules
 
-The Android-first Kotlin Multiplatform bootstrap is in place. The active target is Android only. `commonMain` is reserved for shared product code so iOS can be introduced later without relocating features.
+- Status values are `Planned`, `In progress`, `Blocked`, and `Done`.
+- A release is complete only when every exit criterion is met and its documentation, tests, and API-gap entries are current.
+- A feature may not rely on an undocumented endpoint, response field, editor payload, pagination scheme, or authentication transport.
+- New work belongs in the earliest release whose exit criteria it supports. Cross-release work requires an ADR in `docs/adr/`.
 
-## Confirmed Product Surfaces
+## Product State
 
-- Instance connection and account authentication.
-- Home feed: signed-in For you, Local, and Global tabs; guest Global feed and writing prompt.
-- Post detail: author, metadata, cover, rendered content, tags, likes, recommendations, saving, comments, related posts, and reporting.
-- Local and remote profiles: posts, recommendations, about, followers, following, and follow, mute, or block controls where available.
-- Search: articles, tags, and people; tag and author article filters.
-- Tags, trending posts, suggested people, and topics.
-- Compose, drafts, publishing, scheduling, post management, and dashboard are web surfaces. Compose comes after reading and social features; mobile may use Markdown only if converted to accepted HTML.
-- Settings: instance, appearance, about, and sign out are v1. More web settings follow after core reader parity.
+The Android-first Kotlin Multiplatform foundation and instance connection are complete. The app can normalize an HTTPS origin, retrieve `GET /api/instance`, retain public configuration, and recover the selected instance. Android is the active target; `commonMain` remains the location for product code shared by future targets.
 
-## Token Mapping
+## R0: Foundation And Design System
 
-`composeApp/src/commonMain/kotlin/org/omicron/mobile/core/designsystem/OmicronTheme.kt` ports the exact `app.css` light and dark color, radius, shadow, and font-stack tokens.
+**Status:** Done
 
-- Rikka `background` maps to web `background`; `surface` maps to `background-alt`.
-- Rikka primary maps to `dark`; its foreground maps to `background`.
-- Rikka secondary maps to `muted`; primary tint maps to `accent`; destructive maps directly.
-- Rikka borders map to `border-card`. `border-input`, `foreground-alt`, scrollbar, all web radii, and all web shadows remain available as Omicron-specific tokens.
-- Web fonts are represented by their exact stacks. Android font resources for Inter, Source Sans 3, and Twemoji are a design-parity follow-up before visual sign-off.
+**Outcome:** A reproducible Android app baseline that expresses Omicron's visual language.
 
-## Module Layout
+**Exit criteria:**
 
-Begin with one `composeApp` KMP module to keep the bootstrap small. Keep these packages isolated so they can become Gradle modules only when build time or ownership requires it:
+- Gradle wrapper, release shrinking, edge-to-edge entry point, debug build, lint, and unit-test workflow are present.
+- `OmicronTheme` reflects the web color, radius, shadow, and font-stack tokens.
+- RikkaUI primitives and Lucide RikkaIcons are the only UI primitive and icon systems.
+- Android launcher and in-app branding use the canonical Omicron mark.
 
-- `core.designsystem`, `core.network`, `core.storage`.
-- `data.api`, `data.repository`, `data.cache`.
-- `domain.model`, `domain.usecase`.
-- `feature.connect`, `feature.auth`, `feature.feed`, `feature.post`, `feature.profile`, `feature.search`, `feature.compose`, `feature.settings`.
+## R1: Identity And Account
 
-## API Inventory
+**Status:** In progress
 
-| Need | Confirmed endpoint |
+**Outcome:** A user can choose an instance, establish or restore a Better Auth session, and safely leave it.
+
+**Completed:** HTTPS origin normalization, public instance metadata retrieval, persisted instance configuration, loading, invalid-address, unreachable, retry, and connected states.
+
+**Remaining exit criteria:**
+
+- Introduce type-safe navigation and dependency wiring only where the auth flow uses them.
+- Implement Better Auth email and username sign-in, registration, session restoration, verification-required state, sign-out, and account switching from confirmed `/api/auth/*` behavior.
+- Store cookies securely per instance origin and never send them to another origin.
+- Add UI tests for first connection, invalid origin, offline retry, sign-in, session restoration, and sign-out.
+
+## R2: Guest Reader
+
+**Status:** Planned
+
+**Outcome:** A guest can discover and read public Omicron posts natively.
+
+**Exit criteria:**
+
+- Global and Local timelines use confirmed `GET /api/posts` scopes and opaque cursors unchanged.
+- Post detail renders supported sanitized `contentHtml` natively, with cover media, author metadata, tags, and related posts.
+- Every list has loading, empty, error, offline, refresh, retry, stable keys, and content types.
+- Unsupported sanitized HTML is documented before considering a WebView.
+- Image loading, media origin resolution, cache boundaries, and reader tests are introduced with this release.
+
+## R3: Signed-In Reading And Social
+
+**Status:** Planned
+
+**Outcome:** Signed-in readers can use their feed and interact safely with posts and people.
+
+**Exit criteria:**
+
+- The `GET /api/feed` merged cursor is preserved exactly for the For you timeline.
+- Likes, recommendations, saves, comments, follow, mute, and block use optimistic state with rollback and error recovery.
+- Local and supported remote profiles expose their confirmed post, recommendation, follower, and following surfaces.
+- Session loss, forbidden actions, and offline mutations have explicit recovery states.
+
+## R4: Discovery
+
+**Status:** Planned
+
+**Outcome:** Readers can find content, tags, topics, and people.
+
+**Exit criteria:**
+
+- Search implements the server-supported article, tag, and person scopes and filters.
+- Tag pages, trending posts, suggested people, and topics use confirmed discovery endpoints.
+- Non-paginated server results are represented honestly; the client never manufactures cursors or offsets.
+
+## R5: Authoring And Management
+
+**Status:** Planned
+
+**Outcome:** Authors can create, recover, publish, and manage posts without relying on opaque web-editor data.
+
+**Exit criteria:**
+
+- A mobile editor converts its authoring format losslessly into accepted sanitized HTML.
+- Drafts, uploads, publishing, scheduling, and failure recovery use confirmed server behavior.
+- Post management and dashboard surfaces follow only after reader and authoring reliability are established.
+
+## R6: Settings And Release Readiness
+
+**Status:** Planned
+
+**Outcome:** The app is accessible, maintainable, observable through local quality gates, and ready for release review.
+
+**Exit criteria:**
+
+- Instance management, appearance, about, and sign-out are complete.
+- Offline reading and cache eviction behavior are documented and tested.
+- Licensed Inter and Source Sans 3 assets achieve typography parity with the web client.
+- Release build, R8, startup, baseline profile, accessibility, font-scale, light/dark, and device visual checks pass.
+- README, architecture docs, ADRs, and API gaps reflect the shipped behavior.
+
+## Confirmed API Inventory
+
+| Product need | Confirmed API |
 | --- | --- |
-| Instance validation | `GET /healthz` returns `{status:"ok"}`; `GET /version` returns `{name,version,federation}` |
 | Instance metadata | `GET /api/instance` |
 | Session | Better Auth under `/api/auth/*`; `GET /api/auth/get-session`; `POST /api/auth/sign-out` |
 | Global and Local posts | `GET /api/posts`, with `scope=local`, opaque `cursor`, and language filters |
@@ -52,67 +121,15 @@ Begin with one `composeApp` KMP module to keep the bootstrap small. Keep these p
 
 All regular pages use opaque cursor/keyset pagination and return `{items,nextCursor}`. Never calculate, decode, or replace a cursor. Feed cursors are opaque merged-stream state.
 
-## Milestones
-
-### 1. Project And Design System
-
-- Initialize the Android KMP shell, GPLv3 license, Gradle wrapper, RikkaUI CLI config, RikkaUI foundation, and RikkaIcons Lucide pack.
-- Port Omicron web tokens exactly and protect light/dark aliases with unit tests.
-- Add Android release shrinking, edge-to-edge entry point, Compose resources, and a baseline build/lint/test workflow.
-
-### 2. Instance Connection And Auth
-
-- Add Ktor, kotlinx.serialization, Koin, type-safe Compose Navigation, and secure per-instance preferences after checking their current compatible releases.
-- Normalize and validate a user-entered HTTPS instance origin, defaulting to `https://omicron.blog`.
-- Query instance metadata and retain per-instance configuration.
-- Implement Better Auth email and username sign-in, registration, session restoration, secure cookie storage, verification handoff, and sign out.
-- Add loading, invalid-instance, authentication, verification-required, and offline states.
-
-### 3. Feed
-
-- Add Coil 3 and the local cache implementation after checking their current compatible releases.
-- Build Global, Local, and authenticated For you timelines from actual API scopes.
-- Add reusable opaque-cursor pagination, pull to refresh, skeletons, stable lazy-list keys, image sizing, and latest-feed cache.
-- Add trending, suggested people, and topics as native discovery surfaces.
-
-### 4. Post Reader And Interactions
-
-- Render sanitized article HTML in Compose: headings, paragraphs, marks, links, lists, quotes, code, images, figures, tables, details, definition lists, and MathML where feasible.
-- Add post caching, comments, related posts, Custom Tabs for external links, and optimistic like/recommend/save operations with rollback.
-- Document any unsupported sanitized HTML before considering a WebView fallback.
-
-### 5. Profiles, Search, And Tags
-
-- Implement local and remote actor profiles, posts, recommendations, follower lists, follow state, and optimistic follow changes.
-- Implement search scopes and filters, tag discovery, tag pages, and tag following.
-
-### 6. Compose And Publishing
-
-- Build this last.
-- Use a mobile Markdown editor only if it converts losslessly to accepted sanitized HTML. Do not depend on opaque Tiptap JSON as a portable authoring format.
-- Implement image uploads, drafts, publishing, scheduling, and failure recovery from confirmed endpoints.
-
-### 7. Settings And Release Readiness
-
-- Add instance management, system/light/dark selection, about, and sign out.
-- Complete caches and offline reading, baseline profile, compiler metrics review, R8 validation, accessibility pass, and startup profiling.
-- Finish README setup instructions, known issues, and an updated API-gap list.
-
 ## API Gaps And Constraints
 
-- No confirmed bearer, JWT, OAuth, or device-auth flow. Native authentication must retain Better Auth session cookies securely per instance.
-- Email verification links target the web verification route. No Android App Link or deep-link flow is confirmed.
+- No confirmed bearer, JWT, OAuth, or device-auth flow exists. Native authentication must retain Better Auth session cookies securely per instance.
+- Email verification links target the web verification route. No Android App Link or deep-link handoff is confirmed.
 - No push, WebSocket, SSE, or device-token API exists. Notifications are polling only.
 - No public versioned schema or OpenAPI contract exists; `contract.ts` is compile-time frontend checking only.
-- The live `omicron.blog` deployment returns 404 for `/healthz` and `/version` despite the backend defining those root routes. The mobile bootstrap therefore validates by retrieving the required public `/api/instance` metadata.
+- The live `omicron.blog` deployment returns 404 for `/healthz` and `/version` despite the backend defining those root routes. Instance bootstrap validates by retrieving the required public `/api/instance` metadata.
 - Feed responses contain full HTML and editor JSON, with no mobile projection, fields selector, or page-size control.
 - There is no documented portable rich-text authoring payload. The server requires HTML; `contentJson` is opaque web-editor data.
 - Followers, following, and search have no cursor pagination. Search results are capped server-side.
 - There is no delta-sync or offline-sync endpoint.
 - Remote profile routes return 404 when federation is disabled.
-
-## Known Issues
-
-- Instance connection is available; Better Auth and reader features are not yet implemented.
-- Android font resources have not been bundled, so the exact web typefaces are not yet rendered.
-- No cache, secure cookie storage, authentication flow, or navigation graph exists yet.

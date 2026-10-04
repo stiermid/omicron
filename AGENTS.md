@@ -8,6 +8,10 @@ The Omicron server and web client live at `../omicron`. Read `../omicron/AGENTS.
 
 ## Source Of Truth
 
+- Delivery plan and release gates: `roadmap.md`.
+- Mobile architecture and dependency direction: `docs/architecture.md`.
+- Development, verification, and review procedure: `docs/development.md`.
+- Durable technical decisions: `docs/adr/`.
 - Web design tokens: `../omicron/apps/frontend/src/app.css`.
 - Web screens and interaction behavior: `../omicron/apps/frontend/src/routes` and `../omicron/apps/frontend/src/lib/components`.
 - API types: `../omicron/apps/frontend/src/lib/api/contract.ts`.
@@ -15,6 +19,14 @@ The Omicron server and web client live at `../omicron`. Read `../omicron/AGENTS.
 - Live visual reference: `https://omicron.blog` at a 390px viewport.
 
 Do not invent endpoints, request fields, response fields, pagination, or screens. Record an unfulfilled mobile requirement in `roadmap.md` as an API gap instead of changing the backend from this repository.
+
+## Planning
+
+- Treat `roadmap.md` as the delivery order. Every product change must map to one release, exit criterion, or API-gap entry before implementation.
+- Keep plans durable: record product state, committed decisions, dependencies, risks, and exit criteria. Do not use session notes, temporary ownership, or conversational context as repository documentation.
+- Update the roadmap when scope, API findings, delivery status, or release gates change. Use `Planned`, `In progress`, `Blocked`, or `Done` consistently.
+- Add an ADR from `docs/adr/README.md` when a decision affects public behavior, architecture boundaries, persistence, authentication, navigation, offline behavior, dependencies, or future platform support.
+- Keep changes within the selected roadmap scope. Capture adjacent work as a planned follow-up rather than silently expanding a feature.
 
 ## Architecture
 
@@ -43,7 +55,7 @@ The exact web font stacks are tokenized, but their Android font assets are not y
 
 ## Network And Auth
 
-- Instance validation is root `GET /healthz` or `GET /version`; bootstrap metadata is `GET /api/instance`.
+- Use root `GET /healthz` or `GET /version` when an instance publishes them; bootstrap metadata is `GET /api/instance`. Do not reject an otherwise valid instance solely because the currently documented deployment gap makes the root routes unavailable.
 - The normal app API is rooted at `/api`. Better Auth uses `/api/auth/*`.
 - Authenticated app endpoints use a Better Auth httpOnly session cookie. There is no confirmed bearer, JWT, OAuth, or device-auth transport. Persist session cookies securely per instance and send them only to that instance origin.
 - Core pages use opaque cursor/keyset pagination: preserve `nextCursor` unchanged and never use offsets. `/api/feed` has its own opaque merged-feed cursor.
@@ -62,4 +74,6 @@ The exact web font stacks are tokenized, but their Android font assets are not y
 
 - Work on `feat/`, `fix/`, `docs/`, `refactor/`, or `chore/` branches, never directly on the default branch.
 - Use focused conventional commits. Do not add AI attribution, co-author trailers, or generated-by notes.
-- Keep `roadmap.md` current when scope, API findings, or milestone status changes.
+- Before implementation, read the applicable roadmap release, architecture guidance, and source-of-truth server or web code.
+- Before opening a pull request, update planning artifacts and docs affected by the change, then run the relevant Gradle build, lint, and test tasks.
+- The CI workflow is the minimum merge gate. Do not merge failed or skipped quality checks without documenting the reason and follow-up in the pull request.

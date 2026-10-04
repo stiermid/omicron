@@ -2,7 +2,7 @@
 
 The Android client for [Omicron](https://github.com/the-jk-labs/omicron), a federated and self-hostable ActivityPub blogging platform.
 
-This repository currently contains the Android-first Kotlin Multiplatform bootstrap. Android is the only active target; shared application code belongs in `composeApp/src/commonMain` so an iOS target can be added later without moving feature code.
+This repository contains the Android-first Kotlin Multiplatform client. Android is the only active target; shared application code belongs in `composeApp/src/commonMain` so a future target can be introduced without relocating product code.
 
 ## Requirements
 
@@ -17,22 +17,24 @@ This repository currently contains the Android-first Kotlin Multiplatform bootst
 ./gradlew :composeApp:testDebugUnitTest
 ```
 
-## Architecture
+## Development
 
-- `core`: design system, networking, storage, and shared infrastructure.
-- `data`: API implementations and repositories.
-- `domain`: immutable models and focused use cases.
-- `feature-*`: presentation, state, and UI for one product area.
-- `composeApp/src/commonMain`: shared application code.
-- `composeApp/src/androidMain`: Android entry point and platform integrations.
+- [Development guide](docs/development.md): setup, workflow, verification, and pull requests.
+- [Architecture](docs/architecture.md): package boundaries, state, networking, persistence, and UI conventions.
+- [Roadmap](roadmap.md): ordered releases, exit criteria, and API constraints.
+- [Decision records](docs/adr/README.md): durable technical decisions and their rationale.
 
-The initial implementation wires Omicron's exact web token set through `OmicronTheme`, RikkaUI foundation, and the Lucide RikkaIcons pack. RikkaUI primitive source is owned under `core/designsystem/rikkaui` and is managed by `rikkaui`.
+## Current Capability
 
-## Instance Connection
+- Connect to an HTTPS Omicron instance, defaulting to `https://omicron.blog`.
+- Retrieve and retain public instance metadata from `GET /api/instance`.
+- Present loading, invalid-address, unreachable, and retry states for instance connection.
 
-The planned first-launch flow defaults to `https://omicron.blog`. It will validate an instance with root `GET /healthz` or `GET /version`, then retrieve `GET /api/instance` before saving the normalized HTTPS origin. It is not implemented in this bootstrap.
+Authentication, feeds, reading, social interactions, publishing, settings, and offline cache work are planned releases. See [roadmap.md](roadmap.md).
 
-See [roadmap.md](roadmap.md) for milestones, confirmed API behavior, and known backend gaps.
+## Repository Rules
+
+`AGENTS.md` is required reading for contributors and coding agents. It defines the source of truth, design system, architecture, API rules, and quality bar for this client.
 
 ## License
 
