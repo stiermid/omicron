@@ -274,7 +274,13 @@ git checkout -b fix/short-kebab-description
 
 Prefixes: `fix/`, `feat/`, `docs/`, `refactor/`, `chore/`, `test/`.
 
-Only commit when asked.
+For requested implementation work, commit each completed, verified, logically
+independent step to the active feature branch. This standing instruction
+authorizes those step-by-step commits without a separate per-commit request.
+
+Merge only when the user explicitly asks to merge. An implementation request
+does not authorize merging; user-requested merges still go through a pull
+request and wait for required CI checks to pass.
 
 ### Commits
 
