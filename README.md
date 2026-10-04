@@ -29,10 +29,6 @@
   <a href="#license">License</a>
 </p>
 
-<p align="center">
-  <a href="https://docs.omicron.blog"><strong>Documentation →</strong></a>
-</p>
-
 Omicron is a federated blogging platform. Write rich-text posts, follow other
 writers, read a personalized feed, and federate with the wider fediverse over
 **ActivityPub** — with no vendor lock-in and no gatekeepers. Run your own
