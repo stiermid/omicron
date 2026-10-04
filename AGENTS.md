@@ -1,7 +1,7 @@
 # AGENTS.md
 
-The single source of truth for anyone (human or AI agent) working in this repo.
-`CLAUDE.md` only points here; put every rule in this file.
+This is the single source of truth for anyone (human or AI agent) working in
+this repo.
 
 ## Safety (STRICT)
 
