@@ -104,6 +104,7 @@ All regular pages use opaque cursor/keyset pagination and return `{items,nextCur
 - Email verification links target the web verification route. No Android App Link or deep-link flow is confirmed.
 - No push, WebSocket, SSE, or device-token API exists. Notifications are polling only.
 - No public versioned schema or OpenAPI contract exists; `contract.ts` is compile-time frontend checking only.
+- The live `omicron.blog` deployment returns 404 for `/healthz` and `/version` despite the backend defining those root routes. The mobile bootstrap therefore validates by retrieving the required public `/api/instance` metadata.
 - Feed responses contain full HTML and editor JSON, with no mobile projection, fields selector, or page-size control.
 - There is no documented portable rich-text authoring payload. The server requires HTML; `contentJson` is opaque web-editor data.
 - Followers, following, and search have no cursor pagination. Search results are capped server-side.
@@ -112,7 +113,6 @@ All regular pages use opaque cursor/keyset pagination and return `{items,nextCur
 
 ## Known Issues
 
-- The bootstrap is not yet an instance-connect or reader app.
+- Instance connection is available; Better Auth and reader features are not yet implemented.
 - Android font resources have not been bundled, so the exact web typefaces are not yet rendered.
-- No cache, secure cookie storage, network client, navigation graph, or feature state exists yet.
-- No device or emulator visual validation has been performed.
+- No cache, secure cookie storage, authentication flow, or navigation graph exists yet.

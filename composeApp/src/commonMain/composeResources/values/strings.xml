@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Omicron</string>
+    <string name="connect_change_instance">Change instance</string>
+    <string name="connect_connected_description">The selected instance is saved on this device.</string>
+    <string name="connect_connected_title">Connected to %1$s</string>
+    <string name="connect_continue">Continue</string>
+    <string name="connect_error_invalid_address">Enter a valid HTTPS instance address.</string>
+    <string name="connect_error_unreachable">Could not connect to this instance. Check the address and your connection, then try again.</string>
+    <string name="connect_instance_address">Instance address</string>
+    <string name="connect_instance_description">Choose the Omicron server where you want to read and write.</string>
+    <string name="connect_instance_placeholder">https://omicron.blog</string>
+    <string name="connect_loading">Loading instance</string>
+    <string name="connect_logo_description">Omicron logo</string>
+    <string name="connect_title">Choose an instance</string>
+    <string name="connect_try_again">Try again</string>
 </resources>
