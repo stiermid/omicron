@@ -4,7 +4,7 @@
 
 This repository is the official Omicron mobile client. Android is the only active target. Keep product and shared code in `composeApp/src/commonMain`; place Android-only integrations in `composeApp/src/androidMain`. Do not add an iOS target or iOS implementation unless the task explicitly asks for it.
 
-The Omicron server and web client live in `../backend` and `../frontend`. Read the repository-root `AGENTS.md`, then its linked `CLAUDE.md`, before changing behavior that depends on Omicron conventions or APIs.
+The Omicron server and web client live in `../backend` and `../frontend`. Read the repository-root `AGENTS.md` before changing behavior that depends on Omicron conventions or APIs.
 
 ## Source Of Truth
 
