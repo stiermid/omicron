@@ -742,6 +742,17 @@ export const verifications = pgTable(
   (t) => [index("verifications_identifier_idx").on(t.identifier)],
 );
 
+// ── jwks (Better Auth JWT plugin) ─────────────────────────────────────────
+export const jwks = pgTable("jwks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  publicKey: text("public_key").notNull(),
+  privateKey: text("private_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  alg: text("alg"),
+  crv: text("crv"),
+});
+
 // ── passkeys (Better Auth passkey plugin) ────────────────────────────────
 // WebAuthn credentials. Sign-in looks a row up by `credential_id`.
 export const passkeys = pgTable(

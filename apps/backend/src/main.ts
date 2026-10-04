@@ -7,6 +7,7 @@ import { reconcileAnubisInBackground } from "@/services/anubisProtection.ts";
 import { startDeletedUserSweeper } from "@/services/deletedUsers.ts";
 import { seedFederationOrigin, seedFederationRunning } from "@/services/federationState.ts";
 import { getFederationEnabled, getOrigin } from "@/services/instanceSetup.ts";
+import { completeRollover } from "@/services/jwtKeys.ts";
 import { backfillSlugs } from "@/services/postSlugs.ts";
 import { startRemoteCacheGcSweeper } from "@/services/remoteCacheGc.ts";
 import { startScheduleSweeper } from "@/services/scheduledPosts.ts";
@@ -16,6 +17,9 @@ import { APP_VERSION } from "@/version.ts";
 // Entry point: migrate → build app → serve. Stateless; all data in Postgres.
 async function main() {
   await runMigrations();
+  if (!(await completeRollover())) {
+    throw new Error("JWT signing-key rollover requires a restart with the rotated session secret.");
+  }
   // Posts written before permalinks were readable have no slug yet, and one
   // cannot be derived in SQL — see services/postSlugs.ts. Idempotent, and a
   // single indexed query once every post has one.

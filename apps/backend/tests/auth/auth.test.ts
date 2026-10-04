@@ -16,7 +16,7 @@ const {
   notifyEmailChangedBySelf: vi.fn<(...args: string[]) => Promise<void>>(),
   createUndoLink: vi.fn<(...args: string[]) => Promise<string>>(),
   notifyPasskeyChanged: vi.fn<(change: string, userId: string, name: unknown) => Promise<void>>(),
-  store: { user: [], account: [], session: [], verification: [], passkey: [] } as Record<
+  store: { user: [], account: [], session: [], verification: [], passkey: [], jwks: [] } as Record<
     string,
     Record<string, unknown>[]
   >,
@@ -166,6 +166,80 @@ describe("password reset", () => {
       to: "taken@example.com",
       url: expect.stringMatching(/^https:\/\/blog\.example\.com\/api\/auth\/reset-password\//),
     });
+  });
+});
+
+describe("JWT API authentication", () => {
+  const cookies = new Map<string, string>();
+
+  async function call(path: string, init: { method?: string; body?: unknown } = {}) {
+    const { auth } = await import("@/auth/auth.ts");
+    const res = await auth.handler(
+      new Request(`http://localhost:3000/api/auth${path}`, {
+        method: init.method ?? "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:3000",
+          Cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; "),
+        },
+        body: init.body === undefined ? undefined : JSON.stringify(init.body),
+      }),
+    );
+    for (const header of res.headers.getSetCookie()) {
+      const [pair] = header.split(";");
+      const at = pair.indexOf("=");
+      cookies.set(pair.slice(0, at), pair.slice(at + 1));
+    }
+    return res;
+  }
+
+  async function signedIn() {
+    const res = await call("/sign-up/email", {
+      method: "POST",
+      body: { email: "ada@example.com", password: "Unique-test-password-123!", name: "Ada", username: "ada" },
+    });
+    expect(res.status).toBe(200);
+    return (await res.json()).user.id as string;
+  }
+
+  beforeEach(() => {
+    vi.resetModules();
+    for (const rows of Object.values(store)) rows.length = 0;
+    for (const key of Object.keys(settings)) delete settings[key];
+    cookies.clear();
+    vi.stubEnv("APP_DOMAIN", "localhost:3000");
+    vi.stubEnv("HIBP_CHECK_ENABLED", "false");
+    vi.stubEnv("EMAIL_VERIFICATION_REQUIRED", "false");
+  });
+
+  it("publishes a JWKS and mints a minimal signed token for the current session", async () => {
+    const userId = await signedIn();
+
+    const jwks = await (await call("/jwks")).json();
+    expect(jwks.keys).toEqual([
+      expect.objectContaining({
+        alg: "EdDSA",
+        crv: "Ed25519",
+        kid: expect.any(String),
+        kty: "OKP",
+        x: expect.any(String),
+      }),
+    ]);
+
+    const { token } = await (await call("/token")).json();
+    const { auth } = await import("@/auth/auth.ts");
+    const { payload } = await auth.api.verifyJWT({ body: { token } });
+    expect(payload).toMatchObject({ aud: "http://localhost:3000", iss: "http://localhost:3000", sub: userId });
+    expect(payload).not.toHaveProperty("email");
+    expect(payload).not.toHaveProperty("actorKeyPair");
+  });
+
+  it("holds JWT endpoints until a pending session-secret rotation restarts", async () => {
+    settings["auth.jwtKeySecretFingerprint"] = "pending";
+
+    expect((await call("/jwks")).status).toBe(500);
+    expect((await call("/token")).status).toBe(500);
+    expect(store.jwks).toEqual([]);
   });
 });
 
@@ -495,6 +569,10 @@ describe("a session deleted from the database", () => {
 
   it("can't list the account's sessions with its cached cookie", async () => {
     expect((await call("/list-sessions")).status).toBe(401);
+  });
+
+  it("can't mint a JWT with its cached cookie", async () => {
+    expect((await call("/token")).status).toBe(401);
   });
 
   it("is gone for a read that skips the cache", async () => {

@@ -20,6 +20,8 @@ The Omicron server and web client live in `../backend` and `../frontend`. Read t
 
 Do not invent endpoints, request fields, response fields, pagination, or screens. Record an unfulfilled mobile requirement in `roadmap.md` as an API gap instead of changing the backend from this repository.
 
+When a mobile requirement exposes a general server capability, its backend implementation belongs in `../backend` and must serve every client without mobile-specific routes, fields, or transports.
+
 ## Planning
 
 - Treat `roadmap.md` as the delivery order. Every product change must map to one release, exit criterion, or API-gap entry before implementation.
@@ -57,7 +59,8 @@ The exact web font stacks are tokenized, but their Android font assets are not y
 
 - Use root `GET /healthz` or `GET /version` when an instance publishes them; bootstrap metadata is `GET /api/instance`. Do not reject an otherwise valid instance solely because the currently documented deployment gap makes the root routes unavailable.
 - The normal app API is rooted at `/api`. Better Auth uses `/api/auth/*`.
-- Authenticated app endpoints use a Better Auth httpOnly session cookie. There is no confirmed bearer, JWT, OAuth, or device-auth transport. Persist session cookies securely per instance and send them only to that instance origin.
+- Authenticated app endpoints accept Better Auth JWTs through `Authorization: Bearer`. Mint a 15-minute token through authenticated `GET /api/auth/token`; public signing keys are at `GET /api/auth/jwks`.
+- Persist Better Auth session cookies securely per instance origin only to restore a session and mint replacement tokens. Keep JWTs in memory and never send either credential to another origin. No OAuth or device-auth transport is confirmed.
 - Core pages use opaque cursor/keyset pagination: preserve `nextCursor` unchanged and never use offsets. `/api/feed` has its own opaque merged-feed cursor.
 - Resolve root-relative media URLs against the current instance origin.
 - Posts expose sanitized `contentHtml`; comments are plain text. The only structured editor payload is opaque web Tiptap JSON.

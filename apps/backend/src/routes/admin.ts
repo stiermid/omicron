@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { Hono } from "hono";
 import { z } from "zod";
-import { rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
+import { newSessionSecret, rotateSessionSecret, sessionSecretManaged } from "@/config.ts";
 import {
   ADMIN_USERS_PAGE_SIZE,
   type AdminUserSort,
@@ -21,6 +21,7 @@ import { checkOutboundPort25, verifyRecords } from "@/services/emailDns.ts";
 import * as emailSettings from "@/services/emailSettings.ts";
 import { federationRunning } from "@/services/federationState.ts";
 import * as setup from "@/services/instanceSetup.ts";
+import * as jwtKeys from "@/services/jwtKeys.ts";
 import * as mediaService from "@/services/media.ts";
 import * as moderation from "@/services/moderation.ts";
 import * as seo from "@/services/seo.ts";
@@ -199,10 +200,12 @@ adminRoutes.delete("/instance/banner", async (c) => {
 // Rotate the auto-managed session secret. Restart-applied and signs everyone out
 // then, so it's a deliberate, separate action (not part of the settings save).
 // Refused when the secret is operator-supplied via env / secret file.
-adminRoutes.post("/instance/rotate-secret", (c) => {
+adminRoutes.post("/instance/rotate-secret", async (c) => {
   requireAdmin(c);
   try {
-    rotateSessionSecret();
+    const secret = newSessionSecret();
+    await jwtKeys.beginRollover(secret);
+    rotateSessionSecret(secret);
   } catch (err) {
     throw badRequest(err instanceof Error ? err.message : "Could not rotate the session secret.");
   }

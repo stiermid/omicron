@@ -9,6 +9,18 @@ import type { AppEnv } from "@/routes/types.ts";
 
 export const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+async function userFromJwt(headers: Headers) {
+  const authorization = headers.get("authorization");
+  const match = authorization?.match(/^Bearer\s+(.+)$/i);
+  if (!match) return undefined;
+  try {
+    const { payload } = await auth.api.verifyJWT({ body: { token: match[1] } });
+    return payload && typeof payload.sub === "string" ? await usersRepo.findById(payload.sub) : null;
+  } catch {
+    return null;
+  }
+}
+
 // Resolves the Better Auth session → full user row on every request (null if
 // none). Loading the row (not just the session's user) keeps the whole `User`
 // shape — isAdmin, isModerator, isPrivate, suspendedAt, deletedAt, actorKeyPair — available downstream.
@@ -16,11 +28,15 @@ export const sessionMiddleware = createMiddleware<AppEnv>(async (c, next) => {
   // Better Auth's cookie cache can outlive a revoked session by up to 5 minutes.
   // The identity every page load asks for, and every write, go to the database.
   const authoritative = !READ_METHODS.has(c.req.method) || c.req.path === "/api/me";
-  const session = await auth.api.getSession({
-    headers: c.req.raw.headers,
-    query: { disableCookieCache: authoritative },
-  });
-  const user = session ? await usersRepo.findById(session.user.id) : null;
+  const jwtUser = await userFromJwt(c.req.raw.headers);
+  const session =
+    jwtUser === undefined
+      ? await auth.api.getSession({
+          headers: c.req.raw.headers,
+          query: { disableCookieCache: authoritative },
+        })
+      : null;
+  const user = jwtUser === undefined ? (session ? await usersRepo.findById(session.user.id) : null) : jwtUser;
   // A suspended or deleted account is treated as signed out at once, regardless
   // of the session cookie cache (its sign-in is also blocked in auth/auth.ts).
   c.set("user", user && !user.suspendedAt && !user.deletedAt ? user : null);

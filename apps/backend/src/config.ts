@@ -89,14 +89,23 @@ export function sessionSecretManaged(): boolean {
 // running process keeps the old secret in memory, so this only takes effect on
 // the next restart, and signs everyone out then. Refuses when the secret is
 // pinned to a literal `SESSION_SECRET` env value, which the UI must gate on too.
-export function rotateSessionSecret(): void {
+export function newSessionSecret(): string {
+  if (!sessionSecretManaged()) {
+    throw new Error(
+      "The session secret is pinned via the SESSION_SECRET env var — rotate it there, not from the web UI.",
+    );
+  }
+  return randomHex(32);
+}
+
+export function rotateSessionSecret(secret = newSessionSecret()): void {
   if (!sessionSecretManaged()) {
     throw new Error(
       "The session secret is pinned via the SESSION_SECRET env var — rotate it there, not from the web UI.",
     );
   }
   mkdirSync(STATE_DIR, { recursive: true });
-  writeFileSync(STATE_SECRET_PATH, randomHex(32), { mode: 0o600 });
+  writeFileSync(STATE_SECRET_PATH, secret, { mode: 0o600 });
 }
 
 // Resolve the database URL: explicit DATABASE_URL, or assemble it from

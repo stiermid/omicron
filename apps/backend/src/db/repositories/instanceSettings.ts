@@ -23,3 +23,7 @@ export async function set(key: string, value: unknown) {
       set: { value, updatedAt: new Date() },
     });
 }
+
+export async function remove(key: string) {
+  await db.delete(instanceSettings).where(eq(instanceSettings.key, key));
+}
