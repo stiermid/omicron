@@ -26,18 +26,6 @@ writers, read a personalized feed, and federate with the wider fediverse over
 **ActivityPub** — with no vendor lock-in and no gatekeepers. Run your own
 instance in one command and own your words.
 
-## Contents
-
-- [Features](#features)
-- [Stack](#stack)
-- [Quick start](#quick-start)
-- [Documentation](#documentation)
-- [Development](#development)
-- [Publishing from an external CMS](#publishing-from-an-external-cms)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
-
 ## Features
 
 - **Federated** — every user is an ActivityPub actor; follow and be followed
@@ -175,3 +163,17 @@ v3.0 or later** (AGPL-3.0-or-later). See [LICENSE](LICENSE) for the full text.
 If you run a modified version as a network service, the AGPL's §13 requires
 offering users your modified source. The app surfaces a "Source" link for this
 — point it at your fork if you deploy changes.
+
+---
+
+<p align="center">
+  <a href="#features">Features</a> ·
+  <a href="#stack">Stack</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#documentation">Documentation</a> ·
+  <a href="#development">Development</a> ·
+  <a href="#publishing-from-an-external-cms">External CMS</a> ·
+  <a href="#contributing">Contributing</a> ·
+  <a href="#security">Security</a> ·
+  <a href="#license">License</a>
+</p>
